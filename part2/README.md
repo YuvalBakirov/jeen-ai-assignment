@@ -12,6 +12,10 @@ to open the flow.
 - **Response Agent:** writes the answer and can use the Gmail tool. The Gmail
   action has an approval step.
 
+The SQL tool is based on Langflow's SQL Database component. Its output is
+formatted as JSON so that every returned column is visible to the agent, even
+when a table display would shorten a row.
+
 The orchestrator and response agent run for each message.
 The routing instructions ask the orchestrator to use the analysis agent and SQL
 tool only when support data is needed. The database user has read-only access
@@ -95,6 +99,10 @@ the connection for Langflow's approval-resume worker. This permits background
 flows in the same account to use the connection; review which flows have access
 and keep the approval step enabled on the Gmail action.
 
+If the Google OAuth app is in Testing status, a test user's authorization can
+expire after seven days. Reauthorize the connection if needed. See Google's
+[OAuth audience guidance](https://support.google.com/cloud/answer/15549945).
+
 ## Running and checking
 
 Use Playground to chat with the flow. For an HTTP run, use Langflow's v2
@@ -137,9 +145,10 @@ The sent email was verified in Gmail. Tests also covered rejection, an
 unavailable email connection, and a database connection failure.
 
 Gemini may return a temporary service or quota error. In that case, retry when
-the service is available; the flow should not invent database results or claim
-that an email was sent. Since routing uses a language model, check the trace
-when a result is unexpected.
+the service is available. Since routing uses a language model, check the trace
+when a result is unexpected. A run can fail after Gmail has already sent an
+email. Before retrying an email request after any error, check the Gmail tool
+output in the trace or the Sent folder to avoid sending the message twice.
 
 Some useful checks in Playground are:
 
