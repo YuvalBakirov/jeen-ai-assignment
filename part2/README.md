@@ -19,6 +19,19 @@ to the sample table.
 
 This is a demo with sample data. It does not verify a customer's identity or
 enforce per-customer access, so it should not be used with real customer data.
+It reads existing requests; it does not create, edit, or delete requests. The
+five supplied email addresses are examples. Use an address you control when
+testing email.
+
+## Relation to Part 1
+
+The two parts are separate applications. Part 1 indexes documents and searches
+their embeddings; this flow reads support requests and does not use those
+documents or embeddings. Each part has its own configuration and database.
+Part 2 uses Docker Compose for Langflow and its database. The parts can use
+the same Gemini key, in which case they share its usage limits. They also
+share the computer's resources. Part 1 exposes PostgreSQL on port 5432 by
+default; Part 2 exposes Langflow on port 7860 and keeps its database internal.
 
 ## Local setup
 
@@ -73,6 +86,9 @@ Replace the placeholders locally. The entire value must stay on one line.
 docker compose --env-file .env --env-file .env.oauth -f compose.yaml -f compose.oauth.yaml up -d
 ```
 
+Use this same command when starting the flow again so the Gmail registration
+is included. Both commands use the `jeen-part2` Compose project.
+
 In Langflow settings, create or authorize the `google/jeen_gmail` connection.
 Google will ask for permission to send mail. Background use must be enabled on
 the connection for Langflow's approval-resume worker. This permits background
@@ -124,3 +140,17 @@ Gemini may return a temporary service or quota error. In that case, retry when
 the service is available; the flow should not invent database results or claim
 that an email was sent. Since routing uses a language model, check the trace
 when a result is unexpected.
+
+Some useful checks in Playground are:
+
+- `Hello` should receive a greeting without SQL or Gmail.
+- `What is my request status?` should ask for an identifier if none is known.
+- `What is Sarah Cohen's request status?` should use SQL and return
+  `In Progress` with the supplied sample data.
+- `How many requests are open?` should use SQL and return three.
+- A request for an unknown customer should report that no record was found.
+- An email request missing a subject or body should ask for the missing details.
+- A complete email request should pause for approval before the Gmail action.
+
+The wording may vary. Check the agent and tool steps in Traces, especially if
+a response does not match the expected behavior.
