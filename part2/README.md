@@ -10,7 +10,8 @@ to open the flow.
   support data is needed. It passes the request and any findings forward.
 - **Analysis Agent:** queries the `support_requests` table using the SQL tool.
 - **Response Agent:** writes the answer and can use the Gmail tool. The Gmail
-  action has an approval step.
+  action has an approval step. After approval or rejection, the response agent
+  reports the Gmail result directly, without another Gemini call.
 
 The SQL tool is based on Langflow's SQL Database component. Its output is
 formatted as JSON so that every returned column is visible to the agent, even
@@ -56,9 +57,10 @@ source is different.
    python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
    ```
 
-3. Run `docker compose up -d`. PostgreSQL starts with the five sample support
-   requests from the assignment. Open `http://localhost:7860` and sign in with
-   the Langflow username and password from `.env`.
+3. From `part2`, run `docker compose up -d --build`. PostgreSQL starts with the
+   five sample support requests from the assignment. Open
+   `http://localhost:7860` and sign in with the Langflow username and password
+   from `.env`.
 4. Import the flow JSON in Langflow. The flow uses the `GOOGLE_API_KEY` and
    `SUPPORT_DATABASE_URL` global variables loaded from the local environment.
    The flow uses a connection named `google/jeen_gmail`.
@@ -131,9 +133,18 @@ Invoke-RestMethod -Uri "http://localhost:7860/api/v2/workflows?job_id=$($job.job
     -Headers $headers
 ```
 
-If the job is still running, check its status again. For an email request, the
-run pauses for approval; review the recipient, subject, and message before
-approving it. Playground and API runs can be inspected in Langflow Traces.
+If the job is still running, check its status again. A completed job has the
+answer in `output.text`. The same message can be sent from Playground.
+
+For email, Playground shows an approval card. With the API, get the pending
+request from `GET /api/v2/workflows/pending?flow_id=YOUR_FLOW_ID` and match the
+`job_id` to your run. Review the recipient, subject, and body. Send the
+`request_id` and `decision` with `action_id` set to `approve` or `reject` to
+`POST /api/v2/workflows/{job_id}/resume`, then check the job status again.
+
+Open **Traces** in the flow editor to inspect either run. Open the SQL step
+to see the query under Inputs and the returned records under Outputs. For an
+approved email, open the Gmail step to see its input and the Gmail message ID.
 
 In a real SQL test, asking for Sarah Cohen's request returned **In Progress**.
 Asking for its priority in the same session returned **Medium**. A lookup for
@@ -144,11 +155,11 @@ prepared a status email, waited for approval, and sent it to the test address.
 The sent email was verified in Gmail. Tests also covered rejection, an
 unavailable email connection, and a database connection failure.
 
-Gemini may return a temporary service or quota error. In that case, retry when
-the service is available. Since routing uses a language model, check the trace
-when a result is unexpected. A run can fail after Gmail has already sent an
-email. Before retrying an email request after any error, check the Gmail tool
-output in the trace or the Sent folder to avoid sending the message twice.
+Gemini can return a service or quota error while preparing a response. When
+Gmail returns a message ID, the flow confirms the send. If the request is
+declined, the flow says so. If Gmail does not confirm the send, check the tool
+output in Traces or the Sent folder before trying again. The flow does not
+automatically retry the Gmail tool. Each new send request requires approval.
 
 Some useful checks in Playground are:
 
