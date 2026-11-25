@@ -1,0 +1,126 @@
+# Customer Support Flow
+
+This is Part 2 of the assignment. It uses Langflow, Gemini, PostgreSQL, and
+Gmail to handle a small customer support scenario. Import `support-flow.json`
+to open the flow.
+
+## Flow
+
+- **Orchestrator:** understands the request and calls the analysis agent when
+  support data is needed. It passes the request and any findings forward.
+- **Analysis Agent:** queries the `support_requests` table using the SQL tool.
+- **Response Agent:** writes the answer and can use the Gmail tool. The Gmail
+  action has an approval step.
+
+The orchestrator and response agent run for each message.
+The routing instructions ask the orchestrator to use the analysis agent and SQL
+tool only when support data is needed. The database user has read-only access
+to the sample table.
+
+This is a demo with sample data. It does not verify a customer's identity or
+enforce per-customer access, so it should not be used with real customer data.
+
+## Local setup
+
+Requirements: Docker Desktop with Compose, a Gemini API key, and a Google
+Cloud project for the Gmail connection. This setup uses Langflow 1.13.3.
+The image includes a small, version-specific fix for dependency ordering when
+an approved or rejected run resumes. The build stops if the expected Langflow
+source is different.
+
+1. Copy `.env.example` to `.env` in this folder. Set the passwords and
+   `GEMINI_API_KEY`. Use letters and numbers for `SUPPORT_READER_PASSWORD`,
+   since it is included in a database URL. Keep this file private.
+2. Generate a Fernet key with the following command and use the result for
+   `LANGFLOW_SECRET_KEY`. Keep the key; changing it makes saved credentials
+   unreadable.
+
+   ```text
+   python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+   ```
+
+3. Run `docker compose up -d`. PostgreSQL starts with the five sample support
+   requests from the assignment. Open `http://localhost:7860` and sign in with
+   the Langflow username and password from `.env`.
+4. Import the flow JSON in Langflow. The flow uses the `GOOGLE_API_KEY` and
+   `SUPPORT_DATABASE_URL` global variables loaded from the local environment.
+   The flow uses a connection named `google/jeen_gmail`.
+
+The database setup runs when its Docker volume is first created. Changing the
+database passwords in `.env` later does not update an existing database user.
+
+For Gmail, enable the Gmail API in Google Cloud, configure an OAuth consent
+screen and add the Google account as a test user. Create an OAuth web client
+with this redirect URI:
+
+```text
+http://localhost:7860/api/v1/connections/oauth/google/callback
+```
+
+Create a private `.env.oauth` file in this folder containing a
+`LANGFLOW_CONNECTION_OAUTH_REGISTRATIONS` JSON value with a Google registration
+named `google-jeen`. Use the client ID and secret from Google, the redirect URI
+above, and only the `https://www.googleapis.com/auth/gmail.send` scope. Do not
+add the file to Git or the flow export. Start the service with both files:
+
+```text
+LANGFLOW_CONNECTION_OAUTH_REGISTRATIONS={"google-jeen":{"provider":"google","owner":"customer","context":"self_managed","client_type":"confidential","client_id":"YOUR_CLIENT_ID","client_secret":"YOUR_CLIENT_SECRET","redirect_uri":"http://localhost:7860/api/v1/connections/oauth/google/callback","scopes":["https://www.googleapis.com/auth/gmail.send"]}}
+```
+
+Replace the placeholders locally. The entire value must stay on one line.
+
+```text
+docker compose --env-file .env --env-file .env.oauth -f compose.yaml -f compose.oauth.yaml up -d
+```
+
+In Langflow settings, create or authorize the `google/jeen_gmail` connection.
+Google will ask for permission to send mail. Background use must be enabled on
+the connection for Langflow's approval-resume worker. This permits background
+flows in the same account to use the connection; review which flows have access
+and keep the approval step enabled on the Gmail action.
+
+## Running and checking
+
+Use Playground to chat with the flow. For an HTTP run, use Langflow's v2
+Workflows API and a Langflow API key; the v1 run endpoint does not support the
+approval step. The request body includes the flow ID, input text, session ID,
+and `mode: background`. The response contains a job ID. Poll the job status,
+and use the pending and resume endpoints when approval is needed. Never put the
+API key in the flow JSON. Use the same session ID to keep the conversation
+context and a new session ID for a separate conversation.
+
+For example, create an API key in Langflow, set it as `LANGFLOW_API_KEY` in
+your terminal, and replace the flow ID below with the ID of the imported flow.
+This PowerShell example runs a greeting and checks the job status:
+
+```powershell
+$headers = @{ "x-api-key" = $env:LANGFLOW_API_KEY }
+$body = @{
+    flow_id = "YOUR_FLOW_ID"
+    input_value = "Hello"
+    session_id = "support-example-1"
+    mode = "background"
+} | ConvertTo-Json
+$job = Invoke-RestMethod -Method Post -Uri "http://localhost:7860/api/v2/workflows" `
+    -Headers $headers -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "http://localhost:7860/api/v2/workflows?job_id=$($job.job_id)" `
+    -Headers $headers
+```
+
+If the job is still running, check its status again. For an email request, the
+run pauses for approval; review the recipient, subject, and message before
+approving it. Playground and API runs can be inspected in Langflow Traces.
+
+In a real SQL test, asking for Sarah Cohen's request returned **In Progress**.
+Asking for its priority in the same session returned **Medium**. A lookup for
+an unknown customer returned a not-found message. Traces showed the SQL tool
+for data questions and no tool call when the user asked what details are needed
+to send an email. In a combined test, the flow looked up Sarah's request,
+prepared a status email, waited for approval, and sent it to the test address.
+The sent email was verified in Gmail. Tests also covered rejection, an
+unavailable email connection, and a database connection failure.
+
+Gemini may return a temporary service or quota error. In that case, retry when
+the service is available; the flow should not invent database results or claim
+that an email was sent. Since routing uses a language model, check the trace
+when a result is unexpected.

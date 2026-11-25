@@ -1,0 +1,44 @@
+services:
+  langflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jeen-langflow:1.13.3
+    ports:
+      - "127.0.0.1:${LANGFLOW_PORT:-7860}:7860"
+    environment:
+      LANGFLOW_HOST: 0.0.0.0
+      LANGFLOW_AUTO_LOGIN: "false"
+      LANGFLOW_SUPERUSER: ${LANGFLOW_SUPERUSER:-langflow}
+      LANGFLOW_SUPERUSER_PASSWORD: ${LANGFLOW_SUPERUSER_PASSWORD:?Set LANGFLOW_SUPERUSER_PASSWORD}
+      LANGFLOW_SECRET_KEY: ${LANGFLOW_SECRET_KEY:?Set LANGFLOW_SECRET_KEY}
+      LANGFLOW_CONFIG_DIR: /app/langflow
+      LANGFLOW_SAVE_DB_IN_CONFIG_DIR: "true"
+      LANGFLOW_VARIABLES_TO_GET_FROM_ENVIRONMENT: GOOGLE_API_KEY,SUPPORT_DATABASE_URL
+      LANGFLOW_SSRF_ALLOWED_HOSTS: support-db
+      GOOGLE_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY}
+      SUPPORT_DATABASE_URL: postgresql://support_reader:${SUPPORT_READER_PASSWORD}@support-db:5432/support_demo
+    volumes:
+      - langflow_data:/app/langflow
+    restart: unless-stopped
+
+  support-db:
+    image: pgvector/pgvector:0.8.7-pg17
+    environment:
+      POSTGRES_DB: support_demo
+      POSTGRES_USER: support_admin
+      POSTGRES_PASSWORD: ${SUPPORT_DB_PASSWORD:?Set SUPPORT_DB_PASSWORD}
+      SUPPORT_READER_PASSWORD: ${SUPPORT_READER_PASSWORD:?Set SUPPORT_READER_PASSWORD}
+    volumes:
+      - support_db_data:/var/lib/postgresql/data
+      - ./database/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U support_admin -d support_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  langflow_data:
+  support_db_data:

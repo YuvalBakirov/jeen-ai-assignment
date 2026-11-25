@@ -1,5 +1,7 @@
 # Jeen.ai Document Retrieval
 
+The Langflow customer support flow for Part 2 is in [part2](part2/README.md).
+
 Python 3.12 command-line document indexing and semantic search for PDF and DOCX
 files. It extracts and cleans text, creates chunks with three strategies,
 embeds them with Gemini and stores them in PostgreSQL with pgvector.

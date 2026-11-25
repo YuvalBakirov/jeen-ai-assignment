@@ -1,0 +1,4 @@
+services:
+  langflow:
+    environment:
+      LANGFLOW_CONNECTION_OAUTH_REGISTRATIONS: ${LANGFLOW_CONNECTION_OAUTH_REGISTRATIONS:?Configure Google OAuth first}
