@@ -17,6 +17,9 @@ The SQL tool is based on Langflow's SQL Database component. Its output is
 formatted as JSON so that every returned column is visible to the agent, even
 when a table display would shorten a row.
 
+Some components contain custom code and may show an update notice in Langflow.
+Review any component update before applying it, since it can replace that code.
+
 The orchestrator and response agent run for each message.
 The routing instructions ask the orchestrator to use the analysis agent and SQL
 tool only when support data is needed. The database user has read-only access
@@ -168,6 +171,8 @@ Some useful checks in Playground are:
 - `What is Sarah Cohen's request status?` should use SQL and return
   `In Progress` with the supplied sample data.
 - `How many requests are open?` should use SQL and return three.
+- `How many requests are active?` should treat `Open` and `In Progress` as
+  active and return four for the supplied sample data.
 - A request for an unknown customer should report that no record was found.
 - An email request missing a subject or body should ask for the missing details.
 - A complete email request should pause for approval before the Gmail action.
