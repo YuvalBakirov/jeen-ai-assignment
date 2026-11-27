@@ -8,10 +8,12 @@ to open the flow.
 
 - **Orchestrator:** understands the request and calls the analysis agent when
   support data is needed. It passes the request and any findings forward.
-- **Analysis Agent:** queries the `support_requests` table using the SQL tool.
+- **Analysis Agent:** identifies missing details, queries `support_requests`
+  with the SQL tool, and reports the category, urgency, and next step when
+  the available data supports them.
 - **Response Agent:** writes the answer and can use the Gmail tool. The Gmail
-  action has an approval step. After approval or rejection, the response agent
-  reports the Gmail result directly, without another Gemini call.
+  action pauses for approval. The response agent uses the tool result to
+  report whether the email was sent, declined, or could not be confirmed.
 
 The SQL tool is based on Langflow's SQL Database component. Its output is
 formatted as JSON so that every returned column is visible to the agent, even
@@ -158,11 +160,12 @@ prepared a status email, waited for approval, and sent it to the test address.
 The sent email was verified in Gmail. Tests also covered rejection, an
 unavailable email connection, and a database connection failure.
 
-Gemini can return a service or quota error while preparing a response. When
-Gmail returns a message ID, the flow confirms the send. If the request is
-declined, the flow says so. If Gmail does not confirm the send, check the tool
-output in Traces or the Sent folder before trying again. The flow does not
-automatically retry the Gmail tool. Each new send request requires approval.
+Gemini can return a service or quota error while preparing a response or when
+Langflow resumes after an approval decision. If a run stops at that point,
+check the `send_email` step in Traces and the Gmail Sent folder before trying
+again. A completed send is confirmed by a Gmail message ID. A rejected request
+does not send mail. The flow does not automatically retry the Gmail tool, and
+each new send request requires approval.
 
 Some useful checks in Playground are:
 
