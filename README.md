@@ -8,3 +8,6 @@ This repository contains both parts of the home assignment.
   a support database, and Gmail to handle customer support requests.
 
 Each folder contains its own setup and run instructions.
+
+For Part 2, use the [Langflow export](part2/support-flow.json) and the
+[demo walkthrough](part2/DEMO.md) alongside the separately submitted video.

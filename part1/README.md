@@ -13,7 +13,7 @@ embeds them with Gemini and stores them in PostgreSQL with pgvector.
 
 ## Setup
 
-From the project root, create and activate a virtual environment and install
+From the `part1` directory, create and activate a virtual environment and install
 the dependencies. On Windows PowerShell:
 
 ```powershell
@@ -84,9 +84,7 @@ prints the file name, strategy, chunk position, similarity and text.
 
 The `chunks` table exposes `id`, `chunk_text`, `embedding`, `filename`,
 `split_strategy`, and `created_at`, along with the document reference and chunk
-position. `created_at` is populated when a chunk is stored. For data created
-by the earlier schema, initialization preserves the rows and assigns the
-migration time because their original insertion time was not recorded.
+position. `created_at` is populated when a chunk is stored.
 
 Gemini receives the document text and search queries. Use only documents you
 are authorized to send to the provider. API availability and quotas apply.

@@ -1,8 +1,8 @@
 # Customer Support Flow
 
 This is Part 2 of the assignment. It uses Langflow, Gemini, PostgreSQL, and
-Gmail to handle a small customer support scenario. Import `support-flow.json`
-to open the flow.
+Gmail to help a support representative look up existing requests and send an
+email after approval. Import `support-flow.json` to open the flow.
 
 ## Flow
 
@@ -23,9 +23,9 @@ Some components contain custom code and may show an update notice in Langflow.
 Review any component update before applying it, since it can replace that code.
 
 The orchestrator and response agent run for each message.
-The routing instructions ask the orchestrator to use the analysis agent and SQL
-tool only when support data is needed. The database user has read-only access
-to the sample table.
+The orchestrator calls the analysis agent when support data is needed. The
+analysis agent can query the sample table with a read-only database account.
+The agents can use up to 20 messages from the current conversation as context.
 
 This is a demo with sample data. It does not verify a customer's identity or
 enforce per-customer access, so it should not be used with real customer data.
@@ -111,6 +111,9 @@ expire after seven days. Reauthorize the connection if needed. See Google's
 [OAuth audience guidance](https://support.google.com/cloud/answer/15549945).
 
 ## Running and checking
+
+The [demo walkthrough](DEMO.md) lists the Playground prompts, the tool calls to
+look for in Traces, and the command for the HTTP demo script.
 
 Use Playground to chat with the flow. For an HTTP run, use Langflow's v2
 Workflows API and a Langflow API key; the v1 run endpoint does not support the
